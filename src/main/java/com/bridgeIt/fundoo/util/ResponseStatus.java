@@ -7,7 +7,8 @@ public class ResponseStatus
 {
  public static Response statusInformation(String statusMessage,int statusCode)
  {
-	Response response=new Response();
+	 //Response response=new Response();before testing
+	Response response=new Response(statusMessage, statusCode);
 	response.setStatusCode(statusCode);
 	response.setStatusMessage(statusMessage);
 	return response;

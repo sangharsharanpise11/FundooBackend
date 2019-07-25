@@ -1,6 +1,10 @@
 package com.bridgeIt.fundoo.user.model;
 
-public class EmailId {
+import java.io.Serializable;
+
+public class EmailId implements Serializable {
+	
+private static final long serialVersionUID = 1L;
 private String To;
 private String From;
 private String Subject;

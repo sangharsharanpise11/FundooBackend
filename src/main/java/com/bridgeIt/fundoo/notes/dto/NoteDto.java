@@ -5,6 +5,13 @@ public class NoteDto
  private String title;
  private String description;
  
+ 
+public NoteDto(String title, String description) {
+	super();
+	this.title = title;
+	this.description = description;
+}
+
 public NoteDto() {
 	super();
 }

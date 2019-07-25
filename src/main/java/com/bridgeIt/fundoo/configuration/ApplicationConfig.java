@@ -24,7 +24,8 @@ public class ApplicationConfig
  @Bean
  public Response getResponse()
  {
-	 return new Response();
+	 //return new Response();before testing
+	 return new Response(null, 0);
  }
  
  @Bean

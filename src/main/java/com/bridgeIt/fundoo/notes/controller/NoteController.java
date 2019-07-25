@@ -19,13 +19,11 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.bridgeIt.fundoo.notes.dto.CollaboratorDto;
 import com.bridgeIt.fundoo.notes.dto.NoteDto;
 import com.bridgeIt.fundoo.notes.model.Note;
 import com.bridgeIt.fundoo.notes.service.NoteServices;
 import com.bridgeIt.fundoo.response.Response;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.bridgeIt.fundoo.user.model.User;
 
  
 @RestController
@@ -40,7 +38,7 @@ public class NoteController
     public NoteServices noteService;
 
 @PostMapping("/create")
-public ResponseEntity<Response>createNote(@RequestBody NoteDto noteDto,@RequestHeader String token) throws IllegalArgumentException, UnsupportedEncodingException 
+public ResponseEntity<Response>createNote(@RequestBody NoteDto noteDto,@RequestHeader String token) throws Exception 
 {
 	logger.info(noteDto.toString());
 	Response response=noteService.createNote(noteDto, token);
@@ -48,7 +46,7 @@ public ResponseEntity<Response>createNote(@RequestBody NoteDto noteDto,@RequestH
 }
 
 @PutMapping("/update")
-public ResponseEntity<Response>updateNote(@RequestHeader String token,@RequestBody NoteDto noteDto,@RequestParam long noteId) throws IllegalArgumentException, UnsupportedEncodingException
+public ResponseEntity<Response>updateNote(@RequestHeader String token,@RequestBody NoteDto noteDto,@RequestParam long noteId) throws Exception
 {
 	logger.info(noteDto.toString());
 	Response response=noteService.updateNote(token, noteDto, noteId);
@@ -56,7 +54,7 @@ public ResponseEntity<Response>updateNote(@RequestHeader String token,@RequestBo
 }
 
 @PutMapping("/delete")
-public ResponseEntity<Response>deleteNote(@RequestParam long noteId,@RequestHeader String token) throws IllegalArgumentException, UnsupportedEncodingException
+public ResponseEntity<Response>deleteNote(@RequestParam long noteId,@RequestHeader String token) throws Exception
 {
 	Response response=noteService.deleteNote(noteId,token);
 	return new ResponseEntity<>(response,HttpStatus.OK);
@@ -91,7 +89,7 @@ public ResponseEntity<Response>trashNote(@RequestHeader String token,@RequestPar
 }
 
 @DeleteMapping("/deletePermenently")
-public ResponseEntity<Response>deletePermenently(@RequestHeader String token,@RequestParam long noteId) throws IllegalArgumentException, UnsupportedEncodingException
+public ResponseEntity<Response>deletePermenently(@RequestHeader String token,@RequestParam long noteId) throws Exception
 {
 	Response response=noteService.deletePermanently(token, noteId);
 	return new ResponseEntity<>(response,HttpStatus.OK);
@@ -157,16 +155,33 @@ public ResponseEntity<Response>deleteRemainder(@RequestParam long noteId,@Reques
 
 
 @PostMapping("/addCollaborator") 
-public ResponseEntity<Response>addCollaborator(@RequestHeader String token,@RequestParam long noteId,@RequestBody CollaboratorDto collaboratorDto) throws IllegalArgumentException, UnsupportedEncodingException
+public ResponseEntity<Response>addCollaborator(@RequestHeader String token,@RequestParam long noteId,@RequestParam String emailId) throws IllegalArgumentException, UnsupportedEncodingException
 {
-	Response response=noteService.addCollaborator(token, noteId,collaboratorDto);
+	Response response=noteService.addCollaborator(token, noteId,emailId);
 	return new ResponseEntity<Response>(response,HttpStatus.OK);
 }
 
 @PostMapping("/deleteCollaborator")
-public ResponseEntity<Response>deleteCollaborator(@RequestHeader String token,@RequestParam long noteId,@RequestBody CollaboratorDto collaboratorDto) throws IllegalArgumentException, UnsupportedEncodingException
+public ResponseEntity<Response>deleteCollaborator(@RequestHeader String token,@RequestParam long noteId,@RequestParam String emailId) throws IllegalArgumentException, UnsupportedEncodingException
 {
-	Response response=noteService.deleteCollaborator(token,noteId,collaboratorDto);
+	Response response=noteService.deleteCollaborator(token,noteId,emailId);
 	return new ResponseEntity<Response>(response,HttpStatus.OK);
+}
+@GetMapping("/getAllCollaboratedUser")
+public List<User> getAllCollaboratedUser(@RequestHeader String token, @RequestParam long noteId) throws IllegalArgumentException, UnsupportedEncodingException 
+{
+	List<User> response = noteService.getCollaboratedUser(token, noteId);
+	return response;
+}
+
+@GetMapping("/getAllCollaboratedNotes")
+public List<Note> getAllCollaboratedNotes(@RequestHeader String token) throws IllegalArgumentException, UnsupportedEncodingException
+{
+	List<Note> notes = noteService.getCollaboratedNotes(token);
+	return notes;
+}
+@GetMapping("redisToken")					
+public Note redisData(@RequestParam long noteId) {
+   return noteService.getRedisUserData(noteId);
 }
 }

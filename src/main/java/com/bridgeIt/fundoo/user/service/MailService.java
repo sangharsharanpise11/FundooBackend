@@ -30,7 +30,7 @@ public void send(EmailId emailId)
 	SimpleMailMessage message=new SimpleMailMessage();
 	message.setFrom("sangharsharanpise408@gmail.com");
 	message.setTo(emailId.getTo());
-	message.setSubject(emailId.getSubject());
+	message.setSubject("Email Validation...");
     message.setText(emailId.getBody());
     
     javaMailSender.send(message);
@@ -41,6 +41,5 @@ public String getLink(String link,long id) throws IllegalArgumentException, Unsu
 {
 	return link+tokenGenerators.generateToken(id);
 }
-
 
 }

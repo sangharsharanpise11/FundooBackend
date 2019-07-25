@@ -1,5 +1,6 @@
 package com.bridgeIt.fundoo.user.model;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.List;
 import javax.persistence.CascadeType;
@@ -24,7 +25,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @Component
 @Entity
 @Table(name = "userDetails123")
-public class User {
+public class User implements Serializable {
+	
+	private static final long serialVersionUID = 1L;
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private long userId;
@@ -56,15 +59,15 @@ public class User {
 	private LocalDate modifiedDate;
 	private String image;
 	
-	@JsonIgnoreProperties
+	@JsonIgnore
 	@ManyToMany(mappedBy="collaboratedUsers")
 	private List<Note>collaboratedNote;
 	
-	@JsonIgnoreProperties
+	//@JsonIgnoreProperties
 	@OneToMany(cascade = CascadeType.ALL)
 	private List<Note> notes;
 	
-	@JsonIgnoreProperties
+	//@JsonIgnoreProperties
 	@OneToMany(cascade = CascadeType.ALL)
     private List<Label> label;
 	

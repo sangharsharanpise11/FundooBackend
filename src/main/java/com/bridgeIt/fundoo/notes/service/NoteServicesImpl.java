@@ -1,55 +1,35 @@
 package com.bridgeIt.fundoo.notes.service;
 
 import java.io.UnsupportedEncodingException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-
-import javax.servlet.http.HttpServletRequest;
-
+import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
-import org.springframework.http.ResponseEntity;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.multipart.MultipartFile;
-
 import com.bridgeIt.fundoo.exception.NoteException;
 import com.bridgeIt.fundoo.exception.UserException;
-import com.bridgeIt.fundoo.notes.dto.CollaboratorDto;
 import com.bridgeIt.fundoo.notes.dto.NoteDto;
-import com.bridgeIt.fundoo.notes.model.Collaborator;
 import com.bridgeIt.fundoo.notes.model.Note;
 import com.bridgeIt.fundoo.notes.repository.CollaboratorRepository;
 import com.bridgeIt.fundoo.notes.repository.NoteRepository;
 import com.bridgeIt.fundoo.response.Response;
-import com.bridgeIt.fundoo.user.model.EmailId;
 import com.bridgeIt.fundoo.user.model.User;
 import com.bridgeIt.fundoo.user.repository.UserRepository;
 import com.bridgeIt.fundoo.util.ResponseStatus;
-//import com.bridgeIt.fundoo.util.ResponseStatus;
 import com.bridgeIt.fundoo.util.TokenGenerators;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 
 @Service("noteService")
 @PropertySource("message.properties")
 public class NoteServicesImpl implements NoteServices {
+	
 	Logger logger = LoggerFactory.getLogger(NoteServices.class);
 
 	@Autowired
@@ -73,9 +53,21 @@ public class NoteServicesImpl implements NoteServices {
 	@Autowired
 	public CollaboratorRepository collaboratorRepository;
 
+	
+//	@Autowired
+//	private RabbitMQSender rabbitMqSender;
+	
+	@Autowired
+	private RedisTemplate<String, Object> redis;
+	
+	private static final String KEY = "note";
+	
+	@Autowired
+	private  ElasticService elasticService;
+	
 	@Override
 	public Response createNote(NoteDto noteDto, String token)
-			throws IllegalArgumentException, UnsupportedEncodingException {
+			throws Exception {
 		long id = tokengenerators.decodeToken(token);
 		logger.info(noteDto.toString());
 
@@ -84,7 +76,6 @@ public class NoteServicesImpl implements NoteServices {
 		}
 
 		Note note = modelMapper.map(noteDto, Note.class);
-
 		Optional<User> user = userRepository.findById(id);
 
 		note.setUserId(id);
@@ -94,16 +85,25 @@ public class NoteServicesImpl implements NoteServices {
 
 		noteRepository.save(note);
 		userRepository.save(user.get());
+		
+		//NoteContainer noteContainer=new NoteContainer();
+		//rabbitMqSender.sendNoteMessageToQueue(note);
+		
+		redis.opsForHash().put(KEY, note.getNoteId(), note);
 		Response response = com.bridgeIt.fundoo.util.ResponseStatus.statusInformation(
 				environment.getProperty("status.notes.createdSuccessfull"),
 				Integer.parseInt(environment.getProperty("status.success.code")));
+		
+		System.out.println("*******"+note);
+		elasticService.createNote(note);
 		System.out.println("note is created");
 		return response;
 	}
 
 	@Override
-	public Response updateNote(String token, NoteDto noteDto, long noteId)
-			throws IllegalArgumentException, UnsupportedEncodingException {
+	public Response updateNote(String token, NoteDto noteDto, long noteId)	throws Exception 
+	{
+		System.out.println("note :"+noteDto);
 		if (noteDto.getTitle().isEmpty() && noteDto.getDescription().isEmpty()) {
 			throw new NoteException("Title and Description are empty...", -5);
 		}
@@ -114,6 +114,8 @@ public class NoteServicesImpl implements NoteServices {
 		note.setDescription(noteDto.getDescription());
 		note.setModified(LocalDateTime.now());
 		noteRepository.save(note);
+		
+		elasticService.updateNote(note);
 		Response response = com.bridgeIt.fundoo.util.ResponseStatus.statusInformation(
 				environment.getProperty("status.notes.updated"),
 				Integer.parseInt(environment.getProperty("status.success.code")));
@@ -122,7 +124,7 @@ public class NoteServicesImpl implements NoteServices {
 
 	@Override
 	public Response deleteNote(long noteId, String token)
-			throws IllegalArgumentException, UnsupportedEncodingException {
+			throws Exception {
 		long id = tokengenerators.decodeToken(token);
 		Note note = noteRepository.findByNoteIdAndUserId(noteId, id);
 
@@ -133,6 +135,8 @@ public class NoteServicesImpl implements NoteServices {
 			note.setTrash(true);
 			note.setModified(LocalDateTime.now());
 			noteRepository.save(note);
+			
+			
 			Response response = com.bridgeIt.fundoo.util.ResponseStatus.statusInformation(
 					environment.getProperty("status.note.trashed"),
 					Integer.parseInt(environment.getProperty("status.success.code")));
@@ -147,7 +151,8 @@ public class NoteServicesImpl implements NoteServices {
 	@Override
 	public List<Note> getAllNotes(String token) throws IllegalArgumentException, UnsupportedEncodingException {
 		long id = tokengenerators.decodeToken(token);
-		List<Note> notes = noteRepository.findByUserId(id);
+		Optional<User>user=userRepository.findById(id);
+//		List<Note> notes = noteRepository.findByUserId(id);
 //         List<NoteDto>listNotes=new ArrayList<>();//
 //         
 //         for(Note userNotes: notes)
@@ -158,7 +163,12 @@ public class NoteServicesImpl implements NoteServices {
 // 				listNotes.add(notesDto);
 // 			}
 //         }
-		return notes;
+		List<Note> userNote = user.get().getNotes().stream()
+				.filter(data -> (data.isTrash() == false && data.isArchive() == false && data.isPin() == false))
+				.collect(Collectors.toList());
+		System.out.println(userNote);
+		return userNote;
+		
 	}
 
 	@Override
@@ -239,11 +249,14 @@ public class NoteServicesImpl implements NoteServices {
 
 	@Override
 	public Response deletePermanently(String token, long noteId)
-			throws IllegalArgumentException, UnsupportedEncodingException {
+			throws Exception {
 		long id = tokengenerators.decodeToken(token);
 		Note note = noteRepository.findByNoteIdAndUserId(noteId, id);
-		if (note.isTrash() == true) {
+		if (note.isTrash() == true) 
+		{
 			noteRepository.delete(note);
+			
+			elasticService.deleteNote(noteId);
 			Response response = com.bridgeIt.fundoo.util.ResponseStatus.statusInformation(
 					environment.getProperty("status.note.deleted"),
 					Integer.parseInt(environment.getProperty("status.success.code")));
@@ -380,68 +393,119 @@ public class NoteServicesImpl implements NoteServices {
 	}
 
 	@Override
-	public Response addCollaborator(String token, long noteId, CollaboratorDto collaboratorDto)
-			throws IllegalArgumentException, UnsupportedEncodingException {
+	public Response addCollaborator(String token, long noteId, String emailId)throws IllegalArgumentException, UnsupportedEncodingException {
 		long userId = tokengenerators.decodeToken(token);
-		Note note = noteRepository.findByNoteIdAndUserId(noteId, userId);
+		
+		Optional<User>user=userRepository.findByEmailId(emailId);
+		if(!user.isPresent())
+		{
+			throw new UserException("User not exist", -5);
+		}
+		Note note = noteRepository.findByNoteId(noteId);
 		if (note == null) {
 			throw new NoteException("Note not exist", -5);
 		}
 
-		Optional<Collaborator> userToCollaborate = collaboratorRepository.findByEmailId(collaboratorDto.getEmailId());
-		if (userToCollaborate.isPresent()) {
-			throw new UserException(environment.getProperty("status.collaborator.failure"),
-					Integer.parseInt(environment.getProperty("status.success.code")));
+		Optional<User> userToCollaborate =userRepository.findByEmailId(emailId);
+		if (!userToCollaborate.isPresent()) 
+		{
+			throw new UserException("Collaborator is not exist", -5);
 		}
-
-		Collaborator collaborator = modelMapper.map(collaboratorDto, Collaborator.class);
-//        collaborator.setEmailId(collaboratorDto.getEmailId()); 
-//        collaborator.setCreatedDate(LocalDateTime.now());
-//        collaborator.setNoteId(noteId);
-//        collaborator.setUserId(userId);
-		collaboratorRepository.save(collaborator);
-		noteRepository.save(note);
-
+        
+		if(note.getCollaboratedUsers().contains(emailId))
+		{
+			throw new UserException("Collaborator already exist", -5);
+		}
+		user.get().getCollaboratedNote().add(note);
+		note.getCollaboratedUsers().add(userToCollaborate.get());
+		userRepository.save(user.get());
+		Note note2=noteRepository.save(note);
+		if(note2==null) 
+		{
+			throw new NoteException("Note not exist", -5);
+		}
 		Response response = ResponseStatus.statusInformation(environment.getProperty("status.collaborator.success"),
 				Integer.parseInt(environment.getProperty("status.success.code")));
 		return response;
 	}
 
 	@Override
-	public Response deleteCollaborator(String token, long noteId, CollaboratorDto collaboratorDto)
-			throws IllegalArgumentException, UnsupportedEncodingException {
+	public Response deleteCollaborator(String token, long noteId, String emailId)throws IllegalArgumentException, UnsupportedEncodingException {
 		long userId = tokengenerators.decodeToken(token);
+		
 		Note note = noteRepository.findByNoteIdAndUserId(noteId, userId);
 		if (note == null) {
 			throw new NoteException("Note not exist", -5);
 		}
+  
+		Optional<User>deleteUser=userRepository.findByEmailId(emailId);
+		if(!deleteUser.isPresent()) {
+			throw new UserException("user not exist",-6);
+		}
+		note.getCollaboratedUsers().remove(deleteUser.get());
+		deleteUser.get().getCollaboratedNote().remove(note); 
+		Note notes=noteRepository.save(note);
+		
+		userRepository.save(deleteUser.get());
+		if(notes==null)
+		{
+			throw new NoteException("Note not exist", -5);
+		}
 
-		Optional<Collaborator> deleteCollaborate = collaboratorRepository.findByEmailId(collaboratorDto.getEmailId());
-		if (deleteCollaborate.isPresent()) {
-			collaboratorRepository.delete(deleteCollaborate.get());
-			collaboratorRepository.removeByEmailId(collaboratorDto.getEmailId());
-
-			Response response = ResponseStatus.statusInformation(
-					environment.getProperty("status.delete.success.collaborator"),
+         Response response = ResponseStatus.statusInformation(environment.getProperty("status.delete.success.collaborator"),
 					Integer.parseInt(environment.getProperty("status.success.code")));
 			return response;
 		}
 
-		Response response = ResponseStatus.statusInformation(environment.getProperty("status.collaborator.failure"),
-				Integer.parseInt(environment.getProperty("status.success.code")));
-		return response;
+
+	@Override
+	public List<Note>getRemainderNotes(String token) throws IllegalArgumentException, UnsupportedEncodingException 
+	{
+		long userId = tokengenerators.decodeToken(token);
+		
+		User user = userRepository.findById(userId).orElseThrow(() -> new UserException("Sorry! User not available",-3));
+        List<Note>reminderedNotes=user.getNotes().stream().filter(data ->(data.getRemainder()!=null && !data.getRemainder().isEmpty()))
+		.collect(Collectors.toList());
+        return reminderedNotes;
+	}
+	                                              
+	@Override
+	public List<User> getCollaboratedUser(String token, long noteId) throws IllegalArgumentException, UnsupportedEncodingException {//getCollaboratedUsers collaboratedUsers
+
+		long id = tokengenerators.decodeToken(token);
+		Optional<User> user = userRepository.findById(id);
+		if (!user.isPresent()) 
+		{
+			throw new UserException( "User does not exists",-6);
+		}
+
+		Optional<Note> note = noteRepository.findById(noteId);
+
+		List<User> collaboratedUsers = note.get().getCollaboratedUsers();
+		return collaboratedUsers;
 	}
 
 	@Override
-	public List<Note>getRemainderNotes(String token) throws IllegalArgumentException, UnsupportedEncodingException {
-		long userId = tokengenerators.decodeToken(token);
-		User user = userRepository.findById(userId).orElseThrow(() -> new UserException("Sorry! User not available",-3));
-//      List<Note>reminderedNotes=user.getNotes().stream().filter(data ->(data.ge))
-//		List<Note> reminderedNotes = user.getNotes().stream()
-//		.filter(data -> (data.getReminder() != null && !data.getReminder().isEmpty()))
-//		.collect(Collectors.toList());
-//      return reminderedNotes;
+	public List<Note> getCollaboratedNotes(String token) throws IllegalArgumentException, UnsupportedEncodingException {
 
-		return null;
+		long id = tokengenerators.decodeToken(token);
+		Optional<User> user = userRepository.findById(id);
+		System.out.println("user is:"+user);
+		if (!user.isPresent()) 
+		{
+			throw new UserException( "User does not exists",-6);
+		}
+		List<Note> collaboratedNotes = noteRepository.findByUserId(id);
+		System.out.println("collaborated notes :"+collaboratedNotes);
+		return collaboratedNotes;
 	}
+	
+	@Override
+	public Note getRedisUserData(long  noteId)
+	{
+		   return (Note) redis.opsForHash().get(KEY, noteId);
+//     return redisUtil.getMapAsSingleEntry(KEY, id);
+	}
+
+  
 }

@@ -1,4 +1,4 @@
-package com.bridgeIt;
+package com.bridgeIt.fundoo;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

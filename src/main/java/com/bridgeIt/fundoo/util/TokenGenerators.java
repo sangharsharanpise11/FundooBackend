@@ -13,7 +13,7 @@ import com.auth0.jwt.interfaces.Verification;
 @Component
 public class TokenGenerators
 {
-	private static String Token="sangharsha";//secreat token
+	 static String Token="sangharsha";//secreat token
 
 	public String generateToken(long id) throws UnsupportedEncodingException 
 	{

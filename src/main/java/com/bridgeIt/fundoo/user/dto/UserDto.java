@@ -12,6 +12,7 @@ import org.hibernate.validator.constraints.Length;
 
 public class UserDto 
 {
+	
 	@NotEmpty(message = "Please Enter FirstName")
 	@NotNull(message="Please enter valid name")
 	@Column(name = "firstName", nullable = false)

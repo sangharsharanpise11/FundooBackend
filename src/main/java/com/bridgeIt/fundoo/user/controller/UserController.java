@@ -30,6 +30,8 @@ import com.bridgeIt.fundoo.response.ResponseToken;
 import com.bridgeIt.fundoo.user.dto.LoginDto;
 import com.bridgeIt.fundoo.user.dto.PasswordDto;
 import com.bridgeIt.fundoo.user.dto.UserDto;
+import com.bridgeIt.fundoo.user.model.User;
+import com.bridgeIt.fundoo.user.repository.UserRepository;
 import com.bridgeIt.fundoo.user.service.UserService;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -44,14 +46,11 @@ public class UserController
  
 	@Autowired
 	private UserService userService;
-	
-
-	
+		
 	@PostMapping("/register")
 	public ResponseEntity<Response>registration(@RequestBody UserDto userDto) throws UnsupportedEncodingException
 	{
-	
-        Response response=userService.registration(userDto);
+	    Response response=userService.registration(userDto);
 		return new ResponseEntity<>(response,HttpStatus.OK);
 	}
 	
@@ -91,21 +90,24 @@ public class UserController
 //		return new ResponseEntity<Response> (response, HttpStatus.ACCEPTED);
 //    }		
 //   
-	@PutMapping("/setProfile")
-	public ResponseEntity<Response>setProfile(@RequestParam("imageFile") MultipartFile imageFile,@RequestParam String token) throws IllegalArgumentException, IOException
-	{
-	     //System.out.println("image ->"+imageFile);
-		 UUID uuid = UUID.randomUUID();
-		 String uuidString = uuid.toString();
-	     System.out.println(uuid.toString());
-	        
-	     Files.copy(imageFile.getInputStream(), this.pathlocation.resolve(uuidString),StandardCopyOption.REPLACE_EXISTING);
-	     System.out.println("hello");
-	        
-  	     Response response=userService.setProfile(uuidString,token); 
-  	    
-		 return new ResponseEntity<>(response,HttpStatus.OK);
-	}
-	
-
+//	@PutMapping("/setProfile")
+//	public ResponseEntity<Response>setProfile(@RequestParam("imageFile") MultipartFile imageFile,@RequestParam String token) throws IllegalArgumentException, IOException
+//	{
+//	     //System.out.println("image ->"+imageFile);
+//		 UUID uuid = UUID.randomUUID();
+//		 String uuidString = uuid.toString();
+//	     System.out.println(uuid.toString());
+//	        
+//	     Files.copy(imageFile.getInputStream(), this.pathlocation.resolve(uuidString),StandardCopyOption.REPLACE_EXISTING);
+//	     System.out.println("hello");
+//	        
+//  	     Response response=userService.setProfile(uuidString,token); 
+//  	    
+//		 return new ResponseEntity<>(response,HttpStatus.OK);
+//		 
+//	}	
+//	@GetMapping("redisToken")
+//	public User redisData(@RequestHeader  String token) {
+//	   return userService.getRedisUserData(token);
+//	}
 }

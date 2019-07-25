@@ -23,7 +23,12 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @Entity
 @Table(name = "NoteTable")
 public class Note implements Serializable {
+	
+	/**
+	 * 
+	 */
 	private static final long serialVersionUID = 1L;
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private long noteId;
@@ -48,22 +53,22 @@ public class Note implements Serializable {
 
 	private String remainder;
 
-	public String getCollaboratorEmailId() {
-		return collaboratorEmailId;
-	}
+//	public String getCollaboratorEmailId() {
+//		return collaboratorEmailId;
+//	}
+//
+//	public void setCollaboratorEmailId(String collaboratorEmailId) {
+//		this.collaboratorEmailId = collaboratorEmailId;
+//	}
 
-	public void setCollaboratorEmailId(String collaboratorEmailId) {
-		this.collaboratorEmailId = collaboratorEmailId;
-	}
+	//private String collaboratorEmailId;
 
-	private String collaboratorEmailId;
-
-	@JsonIgnoreProperties
+	@JsonIgnore
 	@ManyToMany(cascade = CascadeType.ALL)
-//@JoinTable(name = "note_table_collaborated_users",JoinColumn=(@JoinColumn(name=""))
+    //@JoinTable(name = "note_table_collaborated_users",JoinColumn=(@JoinColumn(name=""))
 	private List<User> collaboratedUsers;
 
-	@JsonIgnoreProperties
+	@JsonIgnore
 	@ManyToMany(cascade = CascadeType.ALL)
 	private List<Label> listLabel;
 
@@ -179,12 +184,32 @@ public class Note implements Serializable {
 		this.remainder = remainder;
 	}
 
+	
+	public Note(long noteId, long userId, String color, String title, String description, boolean isPin,
+			boolean isArchive, boolean isTrash, LocalDateTime created, LocalDateTime modified, String remainder,
+			String collaboratorEmailId, List<User> collaboratedUsers, List<Label> listLabel) {
+		super();
+		this.noteId = noteId;
+		this.userId = userId;
+		this.color = color;
+		this.title = title;
+		this.description = description;
+		this.isPin = isPin;
+		this.isArchive = isArchive;
+		this.isTrash = isTrash;
+		this.created = created;
+		this.modified = modified;
+		this.remainder = remainder;
+		this.collaboratedUsers = collaboratedUsers;
+		this.listLabel = listLabel;
+	}
+
 	@Override
 	public String toString() {
 		return "Note [noteId=" + noteId + ", userId=" + userId + ", color=" + color + ", title=" + title
 				+ ", description=" + description + ", isPin=" + isPin + ", isArchive=" + isArchive + ", isTrash="
 				+ isTrash + ", created=" + created + ", modified=" + modified + ", remainder=" + remainder
-				+ ", collaboratorEmailId=" + collaboratorEmailId + ", collaboratedUsers=" + collaboratedUsers
+				+ ", collaboratedUsers=" + collaboratedUsers
 				+ ", listLabel=" + listLabel + "]";
 	}
 

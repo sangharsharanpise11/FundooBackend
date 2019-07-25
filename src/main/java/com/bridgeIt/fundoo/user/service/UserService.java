@@ -11,6 +11,7 @@ import com.bridgeIt.fundoo.response.ResponseToken;
 import com.bridgeIt.fundoo.user.dto.LoginDto;
 import com.bridgeIt.fundoo.user.dto.PasswordDto;
 import com.bridgeIt.fundoo.user.dto.UserDto;
+import com.bridgeIt.fundoo.user.model.User;
 @Service
 public interface UserService 
 {
@@ -27,10 +28,8 @@ public interface UserService
 
  Response forgotPassword(LoginDto loginDto); 
 
-	
- //Response changePassword(String token,String newPassword) throws IllegalArgumentException, UnsupportedEncodingException;
+//Response changePassword(String token,String newPassword) throws IllegalArgumentException, UnsupportedEncodingException;
  
-Response setProfile(String imageFile, String token) throws IllegalArgumentException, IOException;
-
+//User getRedisUserData(String token);
 
  }

@@ -3,6 +3,9 @@ package com.bridgeIt.fundoo.response;
 public class Response {
 	private int statusCode;
 	private String statusMessage;
+	
+	public Response(String string, int i) {	}
+	
 	public int getStatusCode() {
 		return statusCode;
 	}

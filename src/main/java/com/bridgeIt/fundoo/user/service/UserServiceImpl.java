@@ -1,6 +1,7 @@
 package com.bridgeIt.fundoo.user.service;
 
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDate;
@@ -13,9 +14,11 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.bridgeIt.fundoo.exception.EmailException;
 import com.bridgeIt.fundoo.exception.LoginException;
-import com.bridgeIt.fundoo.exception.RegistrationException;
+import com.bridgeIt.fundoo.exception.UserException;
 import com.bridgeIt.fundoo.response.Response;
 import com.bridgeIt.fundoo.response.ResponseToken;
 import com.bridgeIt.fundoo.user.dto.LoginDto;
@@ -24,8 +27,10 @@ import com.bridgeIt.fundoo.user.dto.UserDto;
 import com.bridgeIt.fundoo.user.model.EmailId;
 import com.bridgeIt.fundoo.user.model.User;
 import com.bridgeIt.fundoo.user.repository.UserRepository;
+import com.bridgeIt.fundoo.util.RabbitMQSender;
 import com.bridgeIt.fundoo.util.ResponseStatus;
 import com.bridgeIt.fundoo.util.TokenGenerators;
+
 
 @Service("userService")
 @PropertySource("message.properties")
@@ -51,10 +56,16 @@ public class UserServiceImpl implements UserService
 	@Autowired
 	private PasswordEncoder passwordEncoder;
 	
+	@Autowired
+	private RabbitMQSender rabbitMqSender;
+	
+	
+	
+  
 	@Override
 	public Response registration(UserDto userDto) throws UnsupportedEncodingException 
 	{
-		EmailId emailId = new EmailId();
+		EmailId email = new EmailId();
 		Response response;
 		
 		User user = modelMapper.map(userDto, User.class);
@@ -72,27 +83,21 @@ public class UserServiceImpl implements UserService
             user.setRegisteredDate(LocalDate.now());
 			User status = userRepository.save(user);
 
-			emailId.setFrom("sangharsharanpise408@gmail.com");
-			emailId.setTo(userDto.getEmailId());
-			emailId.setSubject("email verification");
-
-			try 
-			{
-				emailId.setBody(mailService.getLink("http://localhost:4200/user/emailvalidation/",user.getUserId()));
-			} 
-			catch (IllegalArgumentException e) 
-			{
-				e.printStackTrace();
-			}
-
-			mailService.send(emailId);
-			if(status==null)
-			{
-				throw new RegistrationException(environment.getProperty("status.register.nosuccess"),
-						Integer.parseInt("status.nosuccess.code"));
-			}
-		
-		response = ResponseStatus.statusInformation(environment.getProperty("status.register.success"),
+    		//hashOperations.put("USER", user.getUserId(), user);
+			
+            //redis.opsForHash().put("USER", user.getUserId(), user);
+			
+			email.setFrom("sangharsharanpise408@gmail.com");
+			email.setTo(userDto.getEmailId());
+			email.setSubject("email verification");
+			Long userId=user.getUserId();
+			String url=mailService.getLink("http://localhost:4200/user/login/", userId);
+            
+		    email.setBody(url+"/valid");
+			rabbitMqSender.sendMessageToQueue(email);
+			
+			System.out.println("*********************msg send to rabitmq****************");
+		    response = ResponseStatus.statusInformation(environment.getProperty("status.register.success"),
 				Integer.parseInt(environment.getProperty("status.regsuccess.code")));
 		return response;
 	}
@@ -134,6 +139,8 @@ public class UserServiceImpl implements UserService
 		user.setVerified(true);
 		user.setModifiedDate(LocalDate.now());
 		
+//		redis.opsForHash().put(KEY, user, user);
+
 		return userRepository.save(user);
 	}
 
@@ -240,19 +247,14 @@ public class UserServiceImpl implements UserService
 //        
 //	}
 
-	@Override
-	public Response setProfile(String imageFile,String token) throws IllegalArgumentException, IOException 
-	{
-	    long userId=tokenGenerators.decodeToken(token);
-	    User user=userRepository.findByUserId(userId).get();
-	    
-	    user.setImage(imageFile);
-	    userRepository.save(user);
-	       
-	    Response response=ResponseStatus.statusInformation(environment.getProperty("status.setProfile.success"),
-	    		Integer.parseInt(environment.getProperty("status.success.code")));
-		return response;
-	}
+//@Override
+//	public User getRedisUserData(String token)
+//	{
+////		   return (User) redis.opsForHash().get(KEY, token);
+//   //  return redisUtil.getMapAsSingleEntry(KEY, id);
+//	}
 
+	
+	
 	
 }
